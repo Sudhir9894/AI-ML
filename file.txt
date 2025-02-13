@@ -1,0 +1,57 @@
+import numpy as np
+import heapq
+
+class Graph:
+    def __init__(self, adjacency_matrix):
+        self.adjacency_matrix = adjacency_matrix
+        self.num_nodes = len(adjacency_matrix)
+
+    def get_neighbors(self, node):
+        return [neighbor for neighbor, is_connected in enumerate(self.adjacency_matrix[node]) if is_connected]
+
+def memory_bounded_a_star(graph, start, goal, memory_limit):
+    visited = set()
+    priority_queue = [(0, start)]
+    
+    memory_usage = 0
+
+    while priority_queue:
+        memory_usage = max(memory_usage, len(visited))
+        if memory_usage > memory_limit:
+            print("Memory limit exceeded!")
+            return None
+        
+        cost, current_node = heapq.heappop(priority_queue)
+
+        if current_node == goal:
+            print("Goal found!")
+            return cost
+
+        if current_node not in visited:
+            visited.add(current_node)
+
+            for neighbor in graph.get_neighbors(current_node):
+                heapq.heappush(priority_queue, (cost + 1, neighbor))
+
+    print("Goal not reachable!")
+    return None
+
+if __name__ == "__main__":
+    # Define the adjacency matrix of the graph
+    adjacency_matrix = np.array([
+        [0, 1, 1, 0, 0, 0, 0], 
+        [1, 0, 0, 1, 1, 0, 0], 
+        [1, 0, 0, 0, 0, 1, 0], 
+        [0, 1, 0, 0, 0, 1, 1], 
+        [0, 1, 0, 0, 0, 0, 1], 
+        [0, 0, 1, 1, 0, 0, 1], 
+        [0, 0, 0, 1, 1, 1, 0]
+    ])
+
+    graph = Graph(adjacency_matrix)
+    start_node = 0
+    goal_node = 6
+    memory_limit = 10  # Set the memory limit
+
+    result = memory_bounded_a_star(graph, start_node, goal_node, memory_limit)
+    print("Shortest path cost:", result)

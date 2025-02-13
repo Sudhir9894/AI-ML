@@ -1,0 +1,139 @@
+import math
+import csv
+import random
+
+# Encode categorical class labels to numeric data
+def encode_class(mydata):
+    classes = []
+    for i in range(len(mydata)):
+        if mydata[i][-1] not in classes:
+            classes.append(mydata[i][-1])
+
+    for i in range(len(classes)):
+        for j in range(len(mydata)):
+            if mydata[j][-1] == classes[i]:
+                mydata[j][-1] = i  # Assign numeric value instead of 1
+    
+    return mydata
+
+# Split dataset into training and testing sets
+def splitting(mydata, ratio):
+    train_num = int(len(mydata) * ratio)
+    train = []
+    test = list(mydata)  # Copy dataset for testing set
+
+    while len(train) < train_num:
+        index = random.randrange(len(test))  # Select random index
+        train.append(test.pop(index))  # Move to training set
+
+    return train, test
+
+# Group dataset by class labels
+def groupUnderClass(mydata):
+    grouped = {}
+    for i in range(len(mydata)):
+        class_value = mydata[i][-1]
+        if class_value not in grouped:
+            grouped[class_value] = []
+        grouped[class_value].append(mydata[i])
+    return grouped
+
+# Calculate Mean
+def mean(numbers):
+    return sum(numbers) / float(len(numbers))
+
+# Calculate Standard Deviation
+def std_dev(numbers):
+    avg = mean(numbers)
+    variance = sum([pow(x - avg, 2) for x in numbers]) / float(len(numbers) - 1)
+    return math.sqrt(variance)
+
+# Compute Mean and Standard Deviation for attributes
+def MeanAndStdDev(mydata):
+    info = [(mean(attribute), std_dev(attribute)) for attribute in zip(*mydata)]
+    del info[-1]  # Remove summary for class attribute
+    return info
+
+# Compute Mean and Standard Deviation for each class
+def MeanAndStdDevForClass(mydata):
+    info = {}
+    grouped = groupUnderClass(mydata)
+    for class_value, instances in grouped.items():
+        info[class_value] = MeanAndStdDev(instances)
+    return info
+
+# Calculate Gaussian Probability Density Function
+def calculateGaussianProbability(x, mean, stdev):
+    if stdev == 0:
+        return 1 if x == mean else 0  # Avoid division by zero
+    expo = math.exp(-(math.pow(x - mean, 2) / (2 * math.pow(stdev, 2))))
+    return (1 / (math.sqrt(2 * math.pi) * stdev)) * expo
+
+# Compute class probabilities for given test data
+def calculateClassProbabilities(info, test):
+    probabilities = {}
+    for class_value, class_summaries in info.items():
+        probabilities[class_value] = 1
+        for i in range(len(class_summaries)):
+            mean, stdev = class_summaries[i]
+            x = test[i]
+            probabilities[class_value] *= calculateGaussianProbability(x, mean, stdev)
+    return probabilities
+
+# Make a prediction based on the highest probability
+def predict(info, test):
+    probabilities = calculateClassProbabilities(info, test)
+    best_label, best_prob = None, -1
+    for class_value, probability in probabilities.items():
+        if best_label is None or probability > best_prob:
+            best_prob = probability
+            best_label = class_value
+    return best_label
+
+# Get predictions for test set
+def getPredictions(info, test):
+    predictions = []
+    for i in range(len(test)):
+        result = predict(info, test[i])
+        predictions.append(result)
+    return predictions
+
+# Calculate accuracy
+def accuracy_rate(test, predictions):
+    correct = 0
+    for i in range(len(test)):
+        if test[i][-1] == predictions[i]:
+            correct += 1
+    return (correct / float(len(test))) * 100.0
+
+# Driver code
+filename = r'E:\user\MACHINE LEARNING\machine_learning_algos\Naive_bayes\filedata.csv'
+
+# Load dataset
+with open(filename, "rt") as file:
+    reader = csv.reader(file)
+    mydata = list(reader)
+
+# Encode categorical class labels
+mydata = encode_class(mydata)
+
+# Convert all values to float
+for i in range(len(mydata)):
+    mydata[i] = [float(x) for x in mydata[i]]
+
+# Split data into training (70%) and testing (30%)
+ratio = 0.7
+train_data, test_data = splitting(mydata, ratio)
+
+print("Total number of examples are:", len(mydata))
+print("Out of these, training examples are:", len(train_data))
+print("Test examples are:", len(test_data))
+
+# Prepare model
+info = MeanAndStdDevForClass(train_data)
+
+# Test model
+predictions = getPredictions(info, test_data)
+accuracy = accuracy_rate(test_data, predictions)
+
+print("Accuracy of your model is:", accuracy)
